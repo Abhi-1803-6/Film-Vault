@@ -3,31 +3,69 @@ import React, { useMemo, useState } from 'react'
 const Watchlist = ({ watchlist = [], onRemove = () => {} }) => {
   const [query, setQuery] = useState('')
   const [sortOrder, setSortOrder] = useState(null) // 'asc' | 'desc' | null
+  const [selectedGenres, setSelectedGenres] = useState([]) // multiple selection allowed
+
+  // derive unique genres from watchlist (split comma-separated Genre fields)
+  const genres = useMemo(() => {
+    const set = new Set()
+    for (const m of watchlist) {
+      const g = (m?.Genre || '').toString()
+      if (!g) continue
+      g
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .forEach((s) => set.add(s))
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [watchlist])
+
+  const toggleGenre = (g) => {
+    setSelectedGenres((prev) => {
+      if (prev.includes(g)) return prev.filter((x) => x !== g)
+      return [...prev, g]
+    })
+  }
 
   const filtered = useMemo(() => {
     const q = (query || '').trim().toLowerCase()
-    if (!q) return watchlist
+    const selSet = new Set(selectedGenres)
     return watchlist.filter((m) => {
       const title = (m?.Title || m?.title || '').toString().toLowerCase()
-      const genre = (m?.Genre || '').toString().toLowerCase()
+      const genreStr = (m?.Genre || '').toString().toLowerCase()
       const year = (m?.Year || '').toString().toLowerCase()
-      return title.includes(q) || genre.includes(q) || year.includes(q)
+
+      // text search match
+      const matchesQuery = !q || title.includes(q) || genreStr.includes(q) || year.includes(q)
+
+      // genre match: if no selected genres -> pass; otherwise if movie contains any of selected genres -> pass
+      if (selSet.size === 0) {
+        return matchesQuery
+      }
+      const movieGenres = (m?.Genre || '')
+        .toString()
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      const matchesGenre = movieGenres.some((mg) => selSet.has(mg))
+      return matchesQuery && matchesGenre
     })
-  }, [watchlist, query])
+  }, [watchlist, query, selectedGenres])
 
   const sorted = useMemo(() => {
-    if (!sortOrder) return filtered
     const copy = [...filtered]
-    copy.sort((a, b) => {
-      const ra = parseFloat(a?.imdbRating) || 0
-      const rb = parseFloat(b?.imdbRating) || 0
-      if (ra === rb) {
-        const ta = (a?.Title || a?.title || '').toString().toLowerCase()
-        const tb = (b?.Title || b?.title || '').toString().toLowerCase()
-        return ta.localeCompare(tb)
-      }
-      return sortOrder === 'asc' ? ra - rb : rb - ra
-    })
+    if (sortOrder) {
+      copy.sort((a, b) => {
+        const ra = parseFloat(a?.imdbRating) || 0
+        const rb = parseFloat(b?.imdbRating) || 0
+        if (ra === rb) {
+          const ta = (a?.Title || a?.title || '').toString().toLowerCase()
+          const tb = (b?.Title || b?.title || '').toString().toLowerCase()
+          return ta.localeCompare(tb)
+        }
+        return sortOrder === 'asc' ? ra - rb : rb - ra
+      })
+    }
     return copy
   }, [filtered, sortOrder])
 
@@ -38,8 +76,32 @@ const Watchlist = ({ watchlist = [], onRemove = () => {} }) => {
   return (
     <>
       <div className='flex justify-center flex-wrap m-4'>
-        <div className='bg-blue-400 flex justify-center h-[3rem] w-[9rem] rounded-xl text-white font-bold items-center mx-4'>Action</div>
-        <div className='bg-gray-400/50 flex justify-center h-[3rem] w-[9rem] rounded-xl text-white font-bold items-center'>Action</div>
+        {genres.length === 0 ? (
+          <>
+            <div className='bg-blue-400 flex justify-center h-[3rem] w-[9rem] rounded-xl text-white font-bold items-center mx-4'>
+              Action
+            </div>
+            <div className='bg-gray-400/50 flex justify-center h-[3rem] w-[9rem] rounded-xl text-white font-bold items-center'>
+              Action
+            </div>
+          </>
+        ) : (
+          genres.map((g) => {
+            const active = selectedGenres.includes(g)
+            return (
+              <button
+                key={g}
+                type='button'
+                onClick={() => toggleGenre(g)}
+                className={`h-[3rem] w-[9rem] rounded-xl font-bold items-center mx-2 px-4 flex justify-center transition ${
+                  active ? 'bg-blue-400 text-white' : 'bg-gray-400/50 text-white'
+                }`}
+              >
+                {g}
+              </button>
+            )
+          })
+        )}
       </div>
 
       <div className='flex justify-center my-4'>
@@ -92,10 +154,7 @@ const Watchlist = ({ watchlist = [], onRemove = () => {} }) => {
               </tr>
             ) : (
               sorted.map((movie) => {
-                const poster =
-                  movie?.Poster && movie.Poster !== 'N/A'
-                    ? movie.Poster
-                    : 'https://via.placeholder.com/200x300?text=No+Image'
+                const poster = movie?.Poster && movie.Poster !== 'N/A' ? movie.Poster : 'https://via.placeholder.com/200x300?text=No+Image'
                 const title = movie?.Title || movie?.title || 'Unknown'
                 const rating = movie?.imdbRating || movie?.Rating || 'N/A'
                 const popularity = movie?.imdbVotes || movie?.Popularity || 'N/A'
@@ -112,11 +171,7 @@ const Watchlist = ({ watchlist = [], onRemove = () => {} }) => {
                     <td className='align-middle'>{popularity}</td>
                     <td className='align-middle'>{genre}</td>
                     <td className='align-middle'>
-                      <button
-                        type='button'
-                        onClick={() => onRemove(id)}
-                        className='text-red-800'
-                      >
+                      <button type='button' onClick={() => onRemove(id)} className='text-red-800 bg-color-red-200 px-3 py-1 rounded hover:bg-red-300'>
                         Delete
                       </button>
                     </td>
