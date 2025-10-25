@@ -101,8 +101,8 @@ const Movies = () => {
           placeholder="Search movies (e.g. batman, inception)..."
           className="w-full max-w-md px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
         />
-        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Search</button>
-        <button type="button" onClick={handleClear} className="px-3 py-2 bg-gray-200 rounded">Clear</button>
+        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded cursor-pointer">Search</button>
+        <button type="button" onClick={handleClear} className="px-3 py-2 bg-gray-200 rounded cursor-pointer">Clear</button>
       </form>
 
       <div className="text-xl font-bold m-4 text-center">
