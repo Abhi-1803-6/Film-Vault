@@ -3,18 +3,16 @@ import axios from 'axios'
 import MovieCard from './MovieCard'
 import Pagination from './Pagination'
 
-const Movies = () => {
+const Movies = ({ handleAddtoWatchList, handleRemoveFromWatchList, watchlist = [] }) => {
   const [movies, setMovies] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [page, setPage] = useState(1)
   const [totalResults, setTotalResults] = useState(0)
 
-  // controlled input and applied query (appliedQuery triggers fetch)
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('') // empty = use default
-
-  const defaultQuery = 'guardians' // used when nothing searched
+  const defaultQuery = 'guardians'
 
   useEffect(() => {
     const key = import.meta.env.VITE_OMDB_API_KEY
@@ -44,7 +42,6 @@ const Movies = () => {
         const list = searchRes.data.Search || []
         setTotalResults(Number(searchRes.data.totalResults || 0))
 
-        // optionally fetch full details for each item on this page
         const details = await Promise.all(
           list.map(async (item) => {
             try {
@@ -53,7 +50,6 @@ const Movies = () => {
               })
               return r.data
             } catch (e) {
-              // fallback to search item if detail fetch fails
               return item
             }
           })
@@ -71,21 +67,19 @@ const Movies = () => {
     }
 
     fetchMovies()
-    // run when page or applied search query changes
   }, [page, searchQuery])
 
   const totalPages = Math.max(1, Math.ceil(totalResults / 10) || 1)
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    // apply the typed query (empty string will use defaultQuery)
     setPage(1)
     setSearchQuery(searchInput.trim())
   }
 
   const handleClear = () => {
     setSearchInput('')
-    setSearchQuery('') // will use defaultQuery
+    setSearchQuery('')
     setPage(1)
   }
 
@@ -106,16 +100,25 @@ const Movies = () => {
       </form>
 
       <div className="text-xl font-bold m-4 text-center">
-        Showing: { (searchQuery && searchQuery.trim()) || defaultQuery }
+        Showing: {(searchQuery && searchQuery.trim()) || defaultQuery}
       </div>
 
       <div className="flex flex-row justify-center flex-wrap">
         {movies.length === 0 ? (
           <div className="text-center p-8">No movies found.</div>
         ) : (
-          movies.map((movie) => (
-            <MovieCard key={movie.imdbID || movie.Title} movie={movie} />
-          ))
+          movies.map((movie) => {
+            const inWatch = watchlist.some(w => w.imdbID === movie.imdbID)
+            return (
+              <MovieCard
+                key={movie.imdbID || movie.Title}
+                movie={movie}
+                handleAddtoWatchList={handleAddtoWatchList}
+                handleRemoveFromWatchList={handleRemoveFromWatchList}
+                isInWatchlist={inWatch}
+              />
+            )
+          })
         )}
       </div>
 
